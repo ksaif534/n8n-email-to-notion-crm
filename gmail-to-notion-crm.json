@@ -1,0 +1,194 @@
+{
+  "name": "Email to Notion CRM in n8n",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "includeDrafts": true,
+          "labelIds": [
+            "INBOX"
+          ],
+          "q": "=Contact Form"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -80,
+        -80
+      ],
+      "id": "87d0eead-aa0b-4f4d-87b7-17181e18b0ff",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VXePj9XakBRVzxGB",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract the name, email, and message from the following email. Return a JSON with keys: name, email, message & date(in datetime format).\n\nEmail body:\n{{ $json.snippet }}\n\nDate:\n{{ $json.internalDate }}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        144,
+        -208
+      ],
+      "id": "ed48f7cb-9c93-4654-beba-fdd943a226e0",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        384,
+        16
+      ],
+      "id": "18c1d7a6-ff93-45db-80d2-ddaeebc3374d",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "bNNPnPjq1DzkFAHu",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let raw = $input.first().json.text;\n\n// Remove code block fencing like ```json ... ```\nraw = raw.replace(/```json|```/g, '').trim();\n\n// Now parse the cleaned string into JSON\nconst parsed = JSON.parse(raw);\n\nreturn [{ json: parsed }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        -208
+      ],
+      "id": "7cfe823d-08ea-4e23-8fd9-8075d3d6adcc",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "2436a750-9297-80a8-8acc-fc244854b7ba",
+          "mode": "list",
+          "cachedResultName": "ClientContactInfo",
+          "cachedResultUrl": "https://www.notion.so/2436a750929780a88accfc244854b7ba"
+        },
+        "title": "={{ $json.name }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Email|email",
+              "emailValue": "={{ $json.email }}"
+            },
+            {
+              "key": "Message|rich_text",
+              "richText": true,
+              "text": {
+                "text": [
+                  {
+                    "text": "={{ $json.message }}",
+                    "annotationUi": {}
+                  }
+                ]
+              }
+            },
+            {
+              "key": "Date|date",
+              "date": "={{ $json.date }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        -208
+      ],
+      "id": "c7ffe41d-2ca7-4b23-b746-6935821e3eb2",
+      "name": "Create a database page",
+      "credentials": {
+        "notionApi": {
+          "id": "6MsldVzoKwPOEF87",
+          "name": "Notion account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Create a database page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7b1f469c-ab4a-4a0d-81d4-762199058c0b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e20dc3bed96b9447d7555f3fce2e8bf6eca8c3c45f2625f39a6e907bc9e0acb1"
+  },
+  "id": "n8r35jLJUbmU4zAp",
+  "tags": []
+}
